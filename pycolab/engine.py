@@ -447,7 +447,7 @@ class Engine(object):
     """
     self._runtime_error_if_called_during_showtime('add_sprite')
     self._value_error_if_characters_are_bad(character, mandatory_len=1)
-    self._runtime_error_if_characters_claimed_already(character)
+    #self._runtime_error_if_characters_claimed_already(character) # to cover duplicate sprites
     if not issubclass(sprite_class, things.Sprite):
       raise TypeError('sprite_class arguments to Engine.add_sprite must be a '
                       'subclass of Sprite')
@@ -464,9 +464,12 @@ class Engine(object):
 
     # Build and save the drape.
     sprite = sprite_class(corner, position, character, *args, **kwargs)
-    self._sprites_and_drapes[character] = sprite
+    # to cover duplicate sprites
+    if not character in self._sprites_and_drapes:
+        self._sprites_and_drapes[character] = []
+    self._sprites_and_drapes[character].append(sprite)
+    #self._sprites_and_drapes[character] = sprite
     self._update_groups[self._current_update_group].append(sprite)
-
     return sprite
 
   def update_group(self, group_name):
@@ -748,13 +751,15 @@ class Engine(object):
     """
     self._renderer.clear()
     self._renderer.paint_all_of(self._backdrop.curtain)
-    for character, entity in six.iteritems(self._sprites_and_drapes):
-      # By now we should have checked fairly carefully that all entities in
-      # _sprites_and_drapes are Sprites or Drapes.
-      if isinstance(entity, things.Sprite) and entity.visible:
-        self._renderer.paint_sprite(character, entity.position)
-      elif isinstance(entity, things.Drape):
-        self._renderer.paint_drape(character, entity.curtain)
+    for character, entities in six.iteritems(self._sprites_and_drapes):
+      # to cover duplicate sprites
+      for entity in entities:
+        # By now we should have checked fairly carefully that all entities in
+        # _sprites_and_drapes are Sprites or Drapes.
+        if isinstance(entity, things.Sprite) and entity.visible:
+          self._renderer.paint_sprite(character, entity.position)
+        elif isinstance(entity, things.Drape):
+          self._renderer.paint_drape(character, entity.curtain)
     # Done with all the layers; render the board!
     self._board = self._renderer.render()
 

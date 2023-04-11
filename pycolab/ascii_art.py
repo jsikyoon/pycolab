@@ -146,8 +146,9 @@ def ascii_art_to_game(art,
   # and Drape classes become Partials with no args or kwargs.
   if sprites is None: sprites = {}
   if drapes is None: drapes = {}
-  sprites = {char: sprite if isinstance(sprite, Partial) else Partial(sprite)
-             for char, sprite in six.iteritems(sprites)}
+  # to cover duplicate sprites
+  #sprites = {char: sprite if isinstance(sprite, Partial) else Partial(sprite)
+  #           for char, sprite in six.iteritems(sprites)}
   drapes = {char: drape if isinstance(drape, Partial) else Partial(drape)
             for char, drape in six.iteritems(drapes)}
 
@@ -244,7 +245,8 @@ def ascii_art_to_game(art,
 
   # Sprites and Drapes are added according to the depth-first traversal of the
   # update schedule.
-  for character in flat_update_schedule:
+  flat_update_schedule = np.array(flat_update_schedule)
+  for idx, character in enumerate(flat_update_schedule):
     # Switch to this character's update group.
     game.update_group(update_group_for[character])
     # Find locations where this character appears in the ASCII art.
@@ -260,28 +262,34 @@ def ascii_art_to_game(art,
     if character in sprites:
       # Get the location of the sprite in the ASCII art, if there was one.
       row, col = np.where(mask)
-      if len(row) > 1:
-        raise ValueError('sprite character {} can appear in at most one place '
-                         'in art.'.format(character))
+      # to cover duplicate sprites
+      #if len(row) > 1:
+      #  raise ValueError('sprite character {} can appear in at most one place '
+      #                   'in art.'.format(character))
+      row_col_list = list(sprites[character].keys())
+      row_col = row_col_list[np.sum(flat_update_schedule[:idx]==character)]
+      row, col = [row_col.split("_")[0]], [row_col.split("_")[1]]
       # If there was a location, convert it to integer values; otherwise, 0,0.
       # gpylint doesn't know how implicit bools work with numpy arrays...
-      row, col = (int(row), int(col)) if len(row) > 0 else (0, 0)  # pylint: disable=g-explicit-length-test
+      row, col = (int(row[0]), int(col[0])) if len(row) > 0 else (0, 0)  # pylint: disable=g-explicit-length-test
 
       # Add the sprite to the Engine.
-      partial = sprites[character]
+      #partial = sprites[character]
+      partial = sprites[character][row_col]
       game.add_sprite(character, (row, col),
                       partial.pycolab_thing,
                       *partial.args, **partial.kwargs)
 
     # Clear out the newly-added Sprite or Drape from the ASCII art.
-    art[mask] = what_lies_beneath[mask]
+    #art[mask] = what_lies_beneath[mask]
+    if row_col_list.index(row_col) == len(row_col_list)-1:
+      art[mask] = what_lies_beneath[mask]
 
   ### 6. Impose specified Z-order ###
 
-  game.set_z_order(z_order)
+  #game.set_z_order(z_order) # not doing for our purpose
 
   ### 7. Add the Backdrop to the engine ###
-
   game.set_prefilled_backdrop(
       characters=''.join(chr(c) for c in np.unique(art)),
       prefill=art.view(np.uint8),

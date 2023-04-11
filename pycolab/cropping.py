@@ -578,6 +578,8 @@ class ScrollingCropper(ObservationCropper):
     # Obtain the item we're trying to track.
     try:
       sprite_or_drape = self._engine.things[entity]
+      if type(sprite_or_drape) == list:
+        sprite_or_drape = sprite_or_drape[0]
     except KeyError:
       raise RuntimeError(
           'ScrollingCropper was told to track a nonexistent game entity '
@@ -593,6 +595,7 @@ class ScrollingCropper(ObservationCropper):
 
     # If here, it's a Drape, not a Sprite. Compute the centroid of its
     # curtain and return that. An empty Drape has no centroid.
+    # to cover duplicate sprites.
     curtain = sprite_or_drape.curtain
     if not curtain.any(): return None
     return tuple(int(np.median(dim)) for dim in curtain.nonzero())
